@@ -1,0 +1,934 @@
+/* =====================================================================
+   Poltek OTC Bali — shared stylesheet
+   Dipakai bersama oleh semua halaman (index.php, tentang-kami.php, dst).
+   ==================================================== */
+
+:root {
+  --primary: #006b5f;
+  --primary-dark: #00443d;
+  --primary-deep: #012f29;
+  --primary-tint: #e3efec;
+  --gold: #b9852f;
+  --gold-light: #f4e8cf;
+  --bg: #faf7f0;
+  --surface: #ffffff;
+  --surface-alt: #f1ece1;
+  --text-primary: #14201d;
+  --text-secondary: #5a655f;
+  --border: #ddd5c4;
+  --border-teal: #c7d9d4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: "Fraunces", serif;
+}
+.font-mono {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+}
+
+/* ---------------------------------------------------------------------
+   Signature motif: layered terrace/contour lines (subak rice terraces)
+   --------------------------------------------------------------------- */
+.terrace-bg {
+  background-image: repeating-linear-gradient(transparent, transparent 27px, rgba(0, 107, 95, 0.07) 27px, rgba(0, 107, 95, 0.07) 28px);
+  mask-image: linear-gradient(to bottom, black, transparent 92%);
+}
+.terrace-divider {
+  height: 34px;
+  width: 100%;
+}
+.parallax-terrace {
+  will-change: transform;
+}
+
+/* ---------------------------------------------------------------------
+   Dynamic gradient background (halaman Tentang Kami)
+   --------------------------------------------------------------------- */
+.gradient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(circle at top, #efe9de 0%, #f5efe6 45%, #f1eadf 100%);
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  will-change: transform;
+}
+.blob-1 {
+  width: 48vw;
+  height: 48vw;
+  background: rgba(0, 107, 95, 0.22);
+  top: -10vw;
+  left: -8vw;
+  animation: drift1 24s ease-in-out infinite alternate;
+}
+.blob-2 {
+  width: 42vw;
+  height: 42vw;
+  background: rgba(196, 161, 123, 0.2);
+  bottom: -12vw;
+  right: -8vw;
+  animation: drift2 28s ease-in-out infinite alternate;
+}
+.blob-3 {
+  width: 36vw;
+  height: 36vw;
+  background: rgba(0, 74, 65, 0.16);
+  top: 42%;
+  left: 40%;
+  animation: drift3 32s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(8vw, 6vw) scale(1.15);
+  }
+}
+@keyframes drift2 {
+  from {
+    transform: translate(0, 0) scale(1.05);
+  }
+  to {
+    transform: translate(-7vw, -5vw) scale(0.9);
+  }
+}
+@keyframes drift3 {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(-6vw, 7vw) scale(1.2);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Empty asset slots (foto/logo yang diisi sendiri)
+   --------------------------------------------------------------------- */
+.placeholder-slot {
+  position: relative;
+  overflow: hidden;
+  background-image: repeating-linear-gradient(135deg, rgba(0, 107, 95, 0.08), rgba(0, 107, 95, 0.08) 10px, rgba(0, 107, 95, 0.02) 10px, rgba(0, 107, 95, 0.02) 20px);
+}
+.slot {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #8a7f6f;
+  background: repeating-linear-gradient(45deg, rgba(0, 107, 95, 0.04) 0 14px, rgba(0, 107, 95, 0.08) 14px 28px);
+  border: 1.5px dashed #c2b7a5;
+}
+.slot-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+/* Shimmer / light-sweep — opt-in via .slot-shimmer (hanya hero beranda) */
+.slot-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+  animation: shimmer 2.6s infinite;
+  pointer-events: none;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Scroll reveal
+   --------------------------------------------------------------------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s ease,
+    transform 0.7s ease;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Word-by-word reveal (untuk headline yang bisa diterjemahkan) */
+.reveal-words .rv-w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  margin-right: 0.28em;
+}
+.reveal-words .rv-w > span {
+  display: inline-block;
+  transform: translateY(110%);
+  opacity: 0;
+}
+.reveal-words.is-visible .rv-w > span {
+  animation: wordUp 0.9s cubic-bezier(0.2, 0.65, 0.3, 1) forwards;
+}
+
+/* Word-by-word reveal statis (headline non-terjemahan, animasi saat load) */
+.hero-title .w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  margin-right: 0.28em;
+}
+.hero-title .w > span {
+  display: inline-block;
+  transform: translateY(110%);
+  opacity: 0;
+  animation: wordUp 0.9s cubic-bezier(0.2, 0.65, 0.3, 1) forwards;
+}
+@keyframes wordUp {
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Header: scroll progress + shrink
+   --------------------------------------------------------------------- */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0;
+  z-index: 60;
+  background: linear-gradient(90deg, var(--primary), var(--gold));
+  transition: width 0.08s linear;
+}
+.js-header-inner {
+  transition:
+    padding-top 0.3s ease,
+    padding-bottom 0.3s ease;
+}
+.js-logo {
+  transition: transform 0.3s ease;
+}
+header.shrink .js-header-inner {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+header.shrink .js-logo {
+  transform: scale(0.9);
+}
+
+/* ---------------------------------------------------------------------
+   Micro-interactions
+   --------------------------------------------------------------------- */
+/* Pulsing badge dot */
+.pulse-dot {
+  animation: dotPulse 2.4s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.35);
+  }
+}
+
+/* Floating info cards */
+.float-card {
+  animation: floaty 6s ease-in-out infinite;
+}
+.float-card:nth-child(2) {
+  animation-delay: -3s;
+}
+@keyframes floaty {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* Card hover: lift + border glow */
+.card-hover {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  border-color: var(--primary) !important;
+  box-shadow: 0 14px 34px -16px rgba(0, 107, 95, 0.35);
+}
+
+/* Button shine sweep */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 70%;
+  height: 100%;
+  transform: skewX(-20deg);
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+.btn-shine:hover::after {
+  left: 130%;
+}
+
+/* Nav underline slide */
+.nav-link {
+  position: relative;
+}
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  height: 2px;
+  width: 100%;
+  background: var(--primary);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+/* Mobile drawer (hamburger + slide menu) */
+.mobile-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: none;
+}
+.mobile-menu.open {
+  display: block;
+}
+.mobile-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 20, 18, 0.5);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.mobile-menu.open .mobile-menu-backdrop {
+  opacity: 1;
+}
+.mobile-menu-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(86vw, 340px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  box-shadow: -22px 0 60px -24px rgba(1, 20, 18, 0.45);
+  transform: translateX(100%);
+  transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.mobile-menu.open .mobile-menu-panel {
+  transform: translateX(0);
+}
+
+.mobile-link,
+.mobile-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.mobile-link:hover,
+.mobile-summary:hover {
+  background: var(--surface-alt);
+}
+.mobile-summary {
+  list-style: none;
+}
+.mobile-summary::-webkit-details-marker {
+  display: none;
+}
+.mobile-caret {
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+}
+.mobile-group[open] > .mobile-summary .mobile-caret {
+  transform: rotate(180deg);
+}
+.mobile-sub {
+  display: flex;
+  flex-direction: column;
+  padding: 0.1rem 0 0.35rem 0.6rem;
+}
+.mobile-sublink {
+  border-radius: 0.7rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.mobile-sublink:hover {
+  background: var(--primary-tint);
+  color: var(--primary-dark);
+}
+
+/* Dropdown navigation */
+.nav-group {
+  position: relative;
+}
+.nav-chevron {
+  transition: transform 0.2s ease;
+}
+.nav-group:hover .nav-chevron,
+.nav-group:focus-within .nav-chevron,
+.nav-group.open .nav-chevron {
+  transform: rotate(180deg);
+}
+.nav-dropdown {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  padding-top: 0.6rem;
+  min-width: 12rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s;
+  z-index: 50;
+}
+.nav-group:hover .nav-dropdown,
+.nav-group:focus-within .nav-dropdown,
+.nav-group.open .nav-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.dropdown-item {
+  display: block;
+  white-space: nowrap;
+  border-radius: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.dropdown-item:hover {
+  background: var(--primary-tint);
+  color: var(--primary-dark);
+}
+
+/* Language Dropdown */
+.js-lang-dropdown {
+  position: relative;
+}
+.dropdown-chevron {
+  transition: transform 0.2s ease;
+}
+.js-lang-dropdown.open .dropdown-chevron {
+  transform: rotate(180deg);
+}
+.lang-dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  padding-top: 0.4rem;
+  width: 10rem;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(6px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s;
+  z-index: 50;
+}
+.js-lang-dropdown.open .lang-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+#mobile-menu .lang-dropdown-menu {
+  position: relative;
+  right: auto;
+  top: auto;
+  width: 100%;
+}
+#mobile-menu .js-lang-dropdown:not(.open) .lang-dropdown-menu {
+  display: none;
+}
+
+/* PMB track pill rotating highlight */
+.track-pill {
+  transition:
+    background 0.4s ease,
+    border-color 0.4s ease,
+    box-shadow 0.4s ease;
+}
+.track-pill.active {
+  background: rgba(244, 232, 207, 0.16);
+  border-color: rgba(244, 232, 207, 0.7);
+  box-shadow: 0 0 0 3px rgba(244, 232, 207, 0.12);
+}
+
+/* CTA subtle pulse */
+.pulse-cta {
+  animation: ctaPulse 2.4s ease-in-out infinite;
+}
+@keyframes ctaPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(185, 133, 47, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(185, 133, 47, 0);
+  }
+}
+
+/* Language toggle */
+.lang-btn {
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Tabs (Tri Dharma) */
+.tab-btn {
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* Gallery masonry + hover */
+.gallery-item {
+  break-inside: avoid;
+  margin-bottom: 1rem;
+}
+.gallery-item .slot,
+.gallery-item img {
+  transition: transform 0.35s ease;
+}
+.gallery-item:hover .slot,
+.gallery-item:hover img {
+  transform: scale(1.03);
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(1, 20, 18, 0.82);
+}
+.lightbox.open {
+  display: flex;
+}
+.lightbox-body {
+  max-width: 900px;
+  width: 100%;
+  max-height: 82vh;
+}
+.lightbox-body.lightbox-body--wide {
+  max-width: min(1280px, calc(100vw - 9rem));
+  max-height: none;
+}
+@media (max-width: 639px) {
+  .lightbox-body.lightbox-body--wide {
+    max-width: 100%;
+  }
+}
+
+/* Modal pengumuman */
+.peng-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.peng-modal.open {
+  display: flex;
+}
+.peng-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 20, 18, 0.55);
+  backdrop-filter: blur(2px);
+}
+.peng-modal-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 30px 70px -20px rgba(1, 20, 18, 0.5);
+  transform: translateY(12px) scale(0.98);
+  opacity: 0;
+  transition:
+    transform 0.25s ease,
+    opacity 0.25s ease;
+}
+.peng-modal.open .peng-modal-card {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+.peng-modal-body {
+  overflow-y: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  .peng-modal-card {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* Eyebrow / kicker text — garis aksen horizontal di samping label kecil */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65em;
+}
+.eyebrow::before {
+  content: "";
+  display: inline-block;
+  width: 1.5rem;
+  height: 1px;
+  flex: none;
+  background: currentColor;
+  opacity: 0.55;
+}
+.eyebrow--center::after {
+  content: "";
+  display: inline-block;
+  width: 1.5rem;
+  height: 1px;
+  flex: none;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+/* Read more / baca selengkapnya (sambutan direktur, dsb.) */
+.readmore-wrap {
+  position: relative;
+  overflow: hidden;
+  max-height: 8rem;
+  transition: max-height 0.45s ease;
+}
+.readmore-wrap::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3rem;
+  background: linear-gradient(to bottom, rgba(252, 248, 241, 0) 0%, rgba(252, 248, 241, 0.95) 80%);
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.readmore-wrap.is-expanded::after {
+  opacity: 0;
+}
+.js-readmore-icon {
+  transform: rotate(0deg);
+}
+.readmore-wrap.readmore-wrap--gallery {
+  max-height: 46rem;
+}
+.readmore-wrap.readmore-wrap--gallery::after {
+  height: 6rem;
+  background: linear-gradient(to bottom, rgba(250, 247, 240, 0) 0%, rgba(250, 247, 240, 0.95) 80%);
+}
+@media (prefers-reduced-motion: reduce) {
+  .readmore-wrap {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Landing pendaftaran: hero slideshow + gradient overlay.
+   Warna overlay = --primary-deep (#012f29) dengan transparansi.
+   --------------------------------------------------------------------- */
+.lp-hero {
+  position: relative;
+  isolation: isolate;
+  background: var(--primary-deep);
+}
+.lp-hero__slides {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.lp-hero__slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+.lp-hero__slide.is-active {
+  opacity: 1;
+}
+.lp-hero__slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--focal-d, 50% 50%);
+}
+.lp-hero::before,
+.lp-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+/* Opacity disetel ulang dari nilai awal handoff agar kontras teks ≥ 4.5:1 di keempat foto */
+.lp-hero::before {
+  background: linear-gradient(90deg, rgba(1, 47, 41, 0.9) 0%, rgba(1, 47, 41, 0.78) 40%, rgba(1, 47, 41, 0.45) 62%, rgba(1, 47, 41, 0.12) 100%);
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .lp-hero::before {
+    background: linear-gradient(90deg, rgba(1, 47, 41, 0.92) 0%, rgba(1, 47, 41, 0.82) 55%, rgba(1, 47, 41, 0.6) 78%, rgba(1, 47, 41, 0.25) 100%);
+  }
+}
+/* Pita gelap tipis di atas agar logo & pemilih bahasa tetap terbaca */
+.lp-hero::after {
+  bottom: auto;
+  height: 7rem;
+  background: linear-gradient(180deg, rgba(1, 47, 41, 0.55) 0%, rgba(1, 47, 41, 0) 100%);
+}
+.lp-hero__content {
+  position: relative;
+  z-index: 2;
+}
+@media (max-width: 767px) {
+  .lp-hero__slide img {
+    object-position: var(--focal-m, 50% 50%);
+  }
+  .lp-hero::before {
+    background: linear-gradient(0deg, rgba(1, 47, 41, 0.92) 0%, rgba(1, 47, 41, 0.82) 45%, rgba(1, 47, 41, 0.6) 65%, rgba(1, 47, 41, 0.15) 100%);
+  }
+}
+
+/* Kartu program studi: "dim to vivid" + zoom halus */
+.lp-prodi {
+  transition: border-color 0.3s ease-out;
+}
+.lp-prodi-media {
+  position: relative;
+  overflow: hidden;
+}
+.lp-prodi-media img {
+  filter: saturate(0.85);
+  transition:
+    transform 0.3s ease-out,
+    filter 0.3s ease-out;
+}
+.lp-prodi-media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(1, 47, 41, 0.22);
+  transition: opacity 0.3s ease-out;
+  pointer-events: none;
+}
+.lp-prodi-arrow {
+  transition: transform 0.3s ease-out;
+}
+.lp-prodi:hover,
+.lp-prodi:focus-visible {
+  border-color: var(--primary) !important;
+}
+.lp-prodi:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.lp-prodi:hover .lp-prodi-media::after,
+.lp-prodi:focus-visible .lp-prodi-media::after {
+  opacity: 0;
+}
+.lp-prodi:hover .lp-prodi-media img,
+.lp-prodi:focus-visible .lp-prodi-media img {
+  filter: none;
+  transform: scale(1.05);
+}
+.lp-prodi:hover .lp-prodi-arrow,
+.lp-prodi:focus-visible .lp-prodi-arrow {
+  transform: translateX(4px);
+}
+@media (hover: none) {
+  .lp-prodi-media::after {
+    opacity: 0;
+  }
+  .lp-prodi-media img {
+    filter: none;
+  }
+  .lp-prodi:hover .lp-prodi-media img {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp-hero__slide {
+    transition: none;
+  }
+  .lp-prodi-media img,
+  .lp-prodi:hover .lp-prodi-media img,
+  .lp-prodi:focus-visible .lp-prodi-media img {
+    transform: none;
+  }
+  .lp-prodi:hover .lp-prodi-arrow,
+  .lp-prodi:focus-visible .lp-prodi-arrow {
+    transform: none;
+  }
+}
+
+/* Testimonial slider */
+.tst-track {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.tst-dot {
+  transition:
+    width 0.3s ease,
+    background 0.3s ease;
+}
+
+/* News pagination button */
+.page-btn {
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* Education timeline */
+.timeline-item {
+  position: relative;
+  padding-left: 1.75rem;
+}
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35rem;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-tint);
+}
+.timeline-item:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 0.3rem;
+  top: 1.1rem;
+  bottom: -0.85rem;
+  width: 1px;
+  background: var(--border);
+}
+
+/* ---------------------------------------------------------------------
+   Reduced motion
+   --------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .hero-title .w > span,
+  .reveal-words .rv-w > span {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .pulse-dot,
+  .float-card,
+  .pulse-cta,
+  .slot-shimmer::after,
+  .blob {
+    animation: none;
+  }
+  .card-hover:hover {
+    transform: none;
+  }
+  .parallax-terrace {
+    transform: none !important;
+  }
+  .mobile-menu-panel,
+  .mobile-menu-backdrop {
+    transition: none;
+  }
+}

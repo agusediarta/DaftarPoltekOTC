@@ -1,0 +1,477 @@
+/* =====================================================================
+   Poltek OTC Bali — common.js
+   Dipakai semua halaman: toggle bahasa (ID/EN), scroll reveal,
+   word-by-word reveal, scroll progress bar, header shrink, parallax.
+   ==================================================== */
+(function () {
+  "use strict";
+
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* -------------------------------------------------------------------
+     Word splitter — memecah teks jadi span kata untuk animasi reveal
+     ------------------------------------------------------------------- */
+  function splitWords(el, text) {
+    if (!text) return;
+    var words = String(text).trim().split(/\s+/);
+    el.innerHTML = words
+      .map(function (w, idx) {
+        return '<span class="rv-w"><span style="animation-delay:' + (idx * 0.06).toFixed(2) + 's">' + w + "</span></span>";
+      })
+      .join("");
+  }
+
+  /* -------------------------------------------------------------------
+     Multilingual toggle (ID / EN / ZH)
+     ------------------------------------------------------------------- */
+  var nodes = Array.prototype.slice.call(document.querySelectorAll("[data-en], [data-zh]"));
+  nodes.forEach(function (el) {
+    if (el.classList.contains("reveal-words")) {
+      el.dataset.idText = el.textContent.trim();
+    } else if (el.dataset.id === undefined) {
+      // Halaman yang dirender dalam EN/ZH (mis. /en/daftar) membawa teks Indonesia di atribut data-id
+      el.dataset.id = el.innerHTML;
+    }
+  });
+
+  // Elemen dengan placeholder yang perlu diterjemahkan (mis. input pencarian)
+  var phNodes = Array.prototype.slice.call(document.querySelectorAll("[data-en-placeholder], [data-zh-placeholder]"));
+  phNodes.forEach(function (el) {
+    el.dataset.idPlaceholder = el.getAttribute("placeholder") || "";
+  });
+
+  function applyLang(lang) {
+    document.documentElement.lang = lang;
+    nodes.forEach(function (el) {
+      var text;
+      if (lang === "zh") {
+        text = el.dataset.zh || el.dataset.en || (el.classList.contains("reveal-words") ? el.dataset.idText : el.dataset.id);
+      } else if (lang === "en") {
+        text = el.dataset.en || (el.classList.contains("reveal-words") ? el.dataset.idText : el.dataset.id);
+      } else {
+        text = el.classList.contains("reveal-words") ? el.dataset.idText : el.dataset.id;
+      }
+
+      if (el.classList.contains("reveal-words")) {
+        splitWords(el, text);
+      } else {
+        el.innerHTML = text;
+      }
+    });
+
+    phNodes.forEach(function (el) {
+      var ph;
+      if (lang === "zh") {
+        ph = el.dataset.zhPlaceholder || el.dataset.enPlaceholder || el.dataset.idPlaceholder;
+      } else if (lang === "en") {
+        ph = el.dataset.enPlaceholder || el.dataset.idPlaceholder;
+      } else {
+        ph = el.dataset.idPlaceholder;
+      }
+      el.setAttribute("placeholder", ph);
+    });
+
+    // Tombol "Daftar Sekarang" → landing page pendaftaran sesuai bahasa (/daftar, /en/daftar, /zh/daftar)
+    document.querySelectorAll("a[data-daftar-link]").forEach(function (a) {
+      a.setAttribute("href", lang === "id" ? "daftar" : lang + "/daftar");
+    });
+
+    // Update label dropdown (e.g. ID, EN, ZH)
+    document.querySelectorAll(".current-lang-label").forEach(function (lbl) {
+      lbl.textContent = lang.toUpperCase();
+    });
+
+    // Update styling opsi dropdown aktif
+    document.querySelectorAll(".lang-opt").forEach(function (btn) {
+      var active = btn.dataset.lang === lang;
+      btn.style.background = active ? "var(--primary-tint)" : "transparent";
+      btn.style.color = active ? "var(--primary-dark)" : "var(--text-primary)";
+      btn.style.fontWeight = active ? "700" : "500";
+    });
+
+    // Backwards compatibility untuk .lang-btn jika masih ada
+    document.querySelectorAll(".lang-btn").forEach(function (btn) {
+      var active = btn.dataset.lang === lang;
+      btn.style.background = active ? "var(--primary)" : "transparent";
+      btn.style.color = active ? "#ffffff" : "var(--text-secondary)";
+    });
+
+    try {
+      localStorage.setItem("otc-lang", lang);
+    } catch (e) {}
+  }
+
+  // Word-reveal headline yang TIDAK diterjemahkan (mis. tagline brand)
+  document.querySelectorAll(".reveal-words:not([data-en]):not([data-zh])").forEach(function (el) {
+    splitWords(el, el.textContent);
+  });
+
+  var startLang = "id";
+  try {
+    var saved = localStorage.getItem("otc-lang");
+    if (saved === "en" || saved === "id" || saved === "zh") startLang = saved;
+  } catch (e) {}
+
+  try {
+    applyLang(startLang);
+  } catch (e) {
+    if (window.console && console.error) console.error("applyLang error:", e);
+  }
+
+  /* -------------------------------------------------------------------
+     Language dropdown toggle & interaction (Delegated Event Listeners)
+     ------------------------------------------------------------------- */
+  function closeAllLangDropdowns(exceptGroup) {
+    document.querySelectorAll(".js-lang-dropdown").forEach(function (g) {
+      if (g === exceptGroup) return;
+      g.classList.remove("open");
+      var menu = g.querySelector(".lang-dropdown-menu");
+      var btn = g.querySelector(".lang-dropdown-btn");
+      if (menu) menu.classList.add("hidden");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest ? e.target.closest(".lang-dropdown-btn") : null;
+    if (btn) {
+      e.preventDefault();
+      e.stopPropagation();
+      var g = btn.closest(".js-lang-dropdown");
+      if (!g) return;
+      var menu = g.querySelector(".lang-dropdown-menu");
+      var isHidden = menu ? menu.classList.contains("hidden") : !g.classList.contains("open");
+
+      closeAllLangDropdowns(isHidden ? g : null);
+
+      if (isHidden) {
+        g.classList.add("open");
+        if (menu) menu.classList.remove("hidden");
+        btn.setAttribute("aria-expanded", "true");
+      } else {
+        g.classList.remove("open");
+        if (menu) menu.classList.add("hidden");
+        btn.setAttribute("aria-expanded", "false");
+      }
+      return;
+    }
+
+    var opt = e.target.closest ? e.target.closest(".lang-opt") : null;
+    if (opt) {
+      e.preventDefault();
+      e.stopPropagation();
+      var selectedLang = opt.dataset.lang;
+      if (selectedLang) {
+        try {
+          applyLang(selectedLang);
+        } catch (err) {}
+      }
+      closeAllLangDropdowns(null);
+      return;
+    }
+
+    // Click outside closes dropdowns
+    closeAllLangDropdowns(null);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeAllLangDropdowns(null);
+  });
+
+  /* -------------------------------------------------------------------
+     Scroll reveal — fade-up + word reveal + stagger
+     ------------------------------------------------------------------- */
+  var observer = new IntersectionObserver(
+    function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          var delay = (parseInt(entry.target.dataset.stagger || "0", 10) || 0) * 120;
+          setTimeout(function () {
+            entry.target.classList.add("is-visible");
+          }, delay);
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.15 },
+  );
+  document.querySelectorAll(".reveal, .reveal-words").forEach(function (el) {
+    observer.observe(el);
+  });
+
+  /* -------------------------------------------------------------------
+     Scroll progress bar + header shrink + terrace parallax
+     ------------------------------------------------------------------- */
+  var header = document.querySelector("header");
+  var bar = document.getElementById("scrollProgress");
+  var parallax = document.querySelectorAll(".parallax-terrace");
+  var ticking = false;
+
+  function update() {
+    var st = window.scrollY || document.documentElement.scrollTop;
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    if (bar) bar.style.width = (h > 0 ? (st / h) * 100 : 0) + "%";
+    if (header) header.classList.toggle("shrink", st > 24);
+    if (!reduce) {
+      parallax.forEach(function (el) {
+        el.style.transform = "translateY(" + st * 0.18 + "px)";
+      });
+    }
+    ticking = false;
+  }
+  window.addEventListener(
+    "scroll",
+    function () {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    },
+    { passive: true },
+  );
+  update();
+
+  /* -------------------------------------------------------------------
+     Dropdown navigasi — klik/tap + keyboard (melengkapi hover CSS)
+     ------------------------------------------------------------------- */
+  var navGroups = Array.prototype.slice.call(document.querySelectorAll(".nav-group"));
+  if (navGroups.length) {
+    function closeAll(except) {
+      navGroups.forEach(function (g) {
+        if (g === except) return;
+        g.classList.remove("open");
+        var b = g.querySelector("button");
+        if (b) b.setAttribute("aria-expanded", "false");
+      });
+    }
+    navGroups.forEach(function (g) {
+      var btn = g.querySelector("button");
+      if (!btn) return;
+      btn.setAttribute("aria-expanded", "false");
+      btn.addEventListener("click", function (e) {
+        e.preventDefault();
+        var willOpen = !g.classList.contains("open");
+        closeAll(g);
+        g.classList.toggle("open", willOpen);
+        btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      });
+      g.addEventListener("focusout", function (e) {
+        if (!g.contains(e.relatedTarget)) {
+          g.classList.remove("open");
+          btn.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+    document.addEventListener("click", function (e) {
+      navGroups.forEach(function (g) {
+        if (!g.contains(e.target)) {
+          g.classList.remove("open");
+          var b = g.querySelector("button");
+          if (b) b.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeAll(null);
+    });
+  }
+
+  /* -------------------------------------------------------------------
+     Read more / baca selengkapnya — expand teks panjang (mis. sambutan direktur)
+     ------------------------------------------------------------------- */
+  Array.prototype.slice.call(document.querySelectorAll(".js-readmore-toggle")).forEach(function (btn) {
+    var wrap = btn.parentElement ? btn.parentElement.querySelector(".readmore-wrap") : null;
+    if (!wrap) return;
+    var moreLabel = btn.querySelector(".js-readmore-more");
+    var lessLabel = btn.querySelector(".js-readmore-less");
+    var icon = btn.querySelector(".js-readmore-icon");
+
+    btn.addEventListener("click", function () {
+      var isExpanded = wrap.classList.contains("is-expanded");
+      if (isExpanded) {
+        wrap.classList.remove("is-expanded");
+        wrap.style.maxHeight = wrap.dataset.collapsedHeight ? wrap.dataset.collapsedHeight + "px" : "";
+      } else {
+        wrap.classList.add("is-expanded");
+        wrap.style.maxHeight = wrap.scrollHeight + "px";
+      }
+      btn.setAttribute("aria-expanded", String(!isExpanded));
+      if (moreLabel) moreLabel.classList.toggle("hidden", !isExpanded);
+      if (lessLabel) lessLabel.classList.toggle("hidden", isExpanded);
+      if (icon) icon.style.transform = isExpanded ? "" : "rotate(180deg)";
+    });
+  });
+
+  /* -------------------------------------------------------------------
+     Sambutan direktur — tinggi card (saat belum di-expand) mengikuti
+     tinggi foto direktur, di atas breakpoint lg
+     ------------------------------------------------------------------- */
+  (function () {
+    var photo = document.querySelector("[data-direktur-photo]");
+    var card = document.querySelector("[data-direktur-card]");
+    if (!photo || !card) return;
+    var wrap = card.querySelector(".readmore-wrap");
+    var button = card.querySelector(".js-readmore-toggle");
+    var signature = card.querySelector("[data-direktur-signature]");
+    if (!wrap || !button || !signature) return;
+    var lgQuery2 = window.matchMedia("(min-width: 1024px)");
+
+    function chromeHeight() {
+      var cardCs = getComputedStyle(card);
+      var padding = (parseFloat(cardCs.paddingTop) || 0) + (parseFloat(cardCs.paddingBottom) || 0);
+      var btnCs = getComputedStyle(button);
+      var btnHeight = button.offsetHeight + (parseFloat(btnCs.marginTop) || 0);
+      var sigCs = getComputedStyle(signature);
+      var sigHeight = signature.offsetHeight + (parseFloat(sigCs.marginTop) || 0);
+      return padding + btnHeight + sigHeight;
+    }
+
+    function syncCollapsedHeight() {
+      var isExpanded = wrap.classList.contains("is-expanded");
+      if (!lgQuery2.matches) {
+        delete wrap.dataset.collapsedHeight;
+        if (!isExpanded) wrap.style.maxHeight = "";
+        return;
+      }
+      var availableHeight = photo.getBoundingClientRect().bottom - card.getBoundingClientRect().top;
+      var target = availableHeight - chromeHeight();
+      if (target < 60) target = 60;
+      wrap.dataset.collapsedHeight = String(Math.round(target));
+      if (!isExpanded) wrap.style.maxHeight = target + "px";
+    }
+
+    syncCollapsedHeight();
+    window.addEventListener("resize", syncCollapsedHeight);
+    button.addEventListener("click", syncCollapsedHeight);
+  })();
+
+  /* -------------------------------------------------------------------
+     Mobile drawer — hamburger + slide menu (tablet & handphone)
+     ------------------------------------------------------------------- */
+  var menuToggle = document.getElementById("menu-toggle");
+  var mobileMenu = document.getElementById("mobile-menu");
+  if (menuToggle && mobileMenu) {
+    var openMenu = function () {
+      mobileMenu.classList.add("open");
+      mobileMenu.setAttribute("aria-hidden", "false");
+      menuToggle.setAttribute("aria-expanded", "true");
+      document.body.style.overflow = "hidden";
+    };
+    var closeMenu = function () {
+      mobileMenu.classList.remove("open");
+      mobileMenu.setAttribute("aria-hidden", "true");
+      menuToggle.setAttribute("aria-expanded", "false");
+      document.body.style.overflow = "";
+    };
+
+    menuToggle.addEventListener("click", openMenu);
+    Array.prototype.slice.call(mobileMenu.querySelectorAll("[data-menu-close]")).forEach(function (b) {
+      b.addEventListener("click", closeMenu);
+    });
+    // Tutup saat sebuah tautan navigasi diklik
+    Array.prototype.slice.call(mobileMenu.querySelectorAll("a")).forEach(function (a) {
+      a.addEventListener("click", closeMenu);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && mobileMenu.classList.contains("open")) closeMenu();
+    });
+    // Tutup otomatis bila layar melebar ke ukuran desktop
+    var lgQuery = window.matchMedia("(min-width: 1024px)");
+    var onLg = function (e) {
+      if (e.matches) closeMenu();
+    };
+    if (lgQuery.addEventListener) lgQuery.addEventListener("change", onLg);
+    else if (lgQuery.addListener) lgQuery.addListener(onLg);
+  }
+
+  /* -------------------------------------------------------------------
+     Lightbox global — elemen #lightbox dipakai bersama di semua halaman
+     (markup-nya ada di partials/footer.php). Menangani mekanisme TUTUP
+     (tombol X, klik backdrop, tombol Escape) serta cara MEMBUKA video
+     YouTube lewat elemen ber-atribut [data-video-youtube] (mis. kartu
+     video di galeri, testimoni alumni, dsb). Pembukaan konten lain
+     (foto galeri) ditangani oleh script masing-masing halaman.
+     ------------------------------------------------------------------- */
+  (function () {
+    var lightbox = document.getElementById("lightbox");
+    if (!lightbox) return;
+    var content = document.getElementById("lightbox-content");
+    var closeBtn = document.getElementById("lightbox-close");
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+      document.body.style.overflow = "";
+      content.innerHTML = "";
+    }
+
+    function openVideoLightbox(youtubeId, title) {
+      var safeTitle = title || "Video";
+      content.innerHTML =
+        '<iframe src="https://www.youtube.com/embed/' +
+        youtubeId +
+        '?autoplay=1" title="' +
+        safeTitle +
+        '" class="mx-auto w-auto rounded-2xl" style="height: min(82vh, 849px); aspect-ratio: 478 / 849; max-width: 100%" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>';
+      lightbox.classList.add("open");
+      document.body.style.overflow = "hidden";
+    }
+
+    Array.prototype.slice.call(document.querySelectorAll("[data-video-youtube]")).forEach(function (el) {
+      el.addEventListener("click", function () {
+        openVideoLightbox(el.dataset.videoYoutube, el.dataset.videoTitle);
+      });
+    });
+
+    if (closeBtn) closeBtn.addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", function (e) {
+      if (e.target === lightbox) closeLightbox();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+    });
+  })();
+
+  /* -------------------------------------------------------------------
+     Salin tautan — tombol "copy link" (mis. bagikan artikel berita)
+     ------------------------------------------------------------------- */
+  Array.prototype.slice.call(document.querySelectorAll("[data-copy-url]")).forEach(function (btn) {
+    var icon = btn.querySelector("iconify-icon");
+    var originalIcon = icon ? icon.getAttribute("icon") : null;
+    var resetTimer = null;
+
+    function fallbackCopy(text) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+
+    function showCopied() {
+      if (icon) icon.setAttribute("icon", "solar:check-circle-bold");
+      btn.setAttribute("aria-label", "Tautan tersalin");
+      if (resetTimer) clearTimeout(resetTimer);
+      resetTimer = setTimeout(function () {
+        if (icon && originalIcon) icon.setAttribute("icon", originalIcon);
+        btn.setAttribute("aria-label", "Salin tautan");
+      }, 1800);
+    }
+
+    btn.addEventListener("click", function () {
+      var url = btn.dataset.copyUrl || window.location.href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showCopied, function () {
+          fallbackCopy(url);
+          showCopied();
+        });
+      } else {
+        fallbackCopy(url);
+        showCopied();
+      }
+    });
+  });
+})();

@@ -1,0 +1,619 @@
+/* =====================================================================
+   Poltek OTC Bali — daftar.js
+   Landing page pendaftaran: bar info gelombang, stepper cara daftar
+   (4 langkah utama + sub-langkah), galeri & lightbox screenshot,
+   pengumuman, bar bawah mobile, dan panel kontak WhatsApp.
+   ===================================================================== */
+(function () {
+  "use strict";
+
+  /* ---------------- Hero slideshow ----------------
+     Crossfade 6 detik. Slide 2–4 dimuat setelah event load; slide baru tampil
+     hanya jika gambarnya sudah termuat. Berhenti saat tab tidak aktif, saat
+     kontrol di-hover/fokus, dan tidak berjalan otomatis bila prefers-reduced-motion. */
+  var heroSlides = document.getElementById("hero-slides");
+  if (heroSlides) {
+    var slides = Array.prototype.slice.call(heroSlides.querySelectorAll(".lp-hero__slide"));
+    var heroDots = Array.prototype.slice.call(document.querySelectorAll(".hero-dot"));
+    var pauseBtn = document.getElementById("hero-pause");
+    var controls = pauseBtn ? pauseBtn.parentElement : null;
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var heroIndex = 0;
+    var heroTimer = null;
+    var userPaused = reduceMotion;
+    var controlHold = false;
+    var ready = slides.map(function (s, i) {
+      return i === 0;
+    });
+
+    function loadSlide(i) {
+      return new Promise(function (resolve) {
+        if (ready[i]) return resolve();
+        var source = slides[i].querySelector("source[data-srcset]");
+        var img = slides[i].querySelector("img");
+        if (source) {
+          source.srcset = source.dataset.srcset;
+          source.removeAttribute("data-srcset");
+        }
+        img.onload = img.onerror = function () {
+          ready[i] = true;
+          resolve();
+        };
+        if (img.dataset.src) {
+          img.src = img.dataset.src;
+          img.removeAttribute("data-src");
+        }
+        if (img.complete && img.naturalWidth) {
+          ready[i] = true;
+          resolve();
+        }
+      });
+    }
+
+    function showSlide(i) {
+      heroIndex = i;
+      slides.forEach(function (s, k) {
+        var on = k === i;
+        s.classList.toggle("is-active", on);
+        if (on) s.removeAttribute("aria-hidden");
+        else s.setAttribute("aria-hidden", "true");
+      });
+      heroDots.forEach(function (d, k) {
+        var on = k === i;
+        var ind = d.querySelector(".hero-dot-ind");
+        if (ind) {
+          ind.style.width = on ? "1.5rem" : "0.5rem";
+          ind.style.background = on ? "#ffffff" : "rgba(255,255,255,0.55)";
+        }
+        if (on) d.setAttribute("aria-current", "true");
+        else d.removeAttribute("aria-current");
+      });
+    }
+
+    function schedule() {
+      clearTimeout(heroTimer);
+      if (userPaused || controlHold || document.hidden || slides.length < 2) return;
+      heroTimer = setTimeout(function () {
+        var n = (heroIndex + 1) % slides.length;
+        if (ready[n]) showSlide(n);
+        else loadSlide(n);
+        schedule();
+      }, 6000);
+    }
+
+    function setPaused(p) {
+      userPaused = p;
+      if (pauseBtn) {
+        pauseBtn.setAttribute("aria-label", p ? pauseBtn.dataset.labelPlay : pauseBtn.dataset.labelPause);
+        var icon = pauseBtn.querySelector(".hero-pause-icon");
+        if (icon) icon.setAttribute("icon", p ? "solar:play-bold" : "solar:pause-bold");
+      }
+      schedule();
+    }
+
+    heroDots.forEach(function (d) {
+      d.addEventListener("click", function () {
+        var i = parseInt(d.dataset.goto, 10);
+        loadSlide(i).then(function () {
+          showSlide(i);
+          schedule();
+        });
+      });
+    });
+    if (pauseBtn) {
+      pauseBtn.addEventListener("click", function () {
+        setPaused(!userPaused);
+      });
+    }
+    if (controls) {
+      // Jeda selama kursor di atas kontrol atau fokus keyboard berada di kontrol.
+      // Fokus sisa klik mouse tidak dihitung, agar autoplay tidak berhenti permanen.
+      var keyboardFocusInside = function () {
+        var a = document.activeElement;
+        return controls.contains(a) && a.matches(":focus-visible");
+      };
+      controls.addEventListener("mouseenter", function () {
+        controlHold = true;
+        schedule();
+      });
+      controls.addEventListener("mouseleave", function () {
+        controlHold = keyboardFocusInside();
+        schedule();
+      });
+      controls.addEventListener("focusin", function () {
+        controlHold = keyboardFocusInside() || controls.matches(":hover");
+        schedule();
+      });
+      controls.addEventListener("focusout", function (e) {
+        controlHold = (controls.contains(e.relatedTarget) && e.relatedTarget.matches(":focus-visible")) || controls.matches(":hover");
+        schedule();
+      });
+    }
+    document.addEventListener("visibilitychange", schedule);
+
+    function preloadRest() {
+      slides.slice(1).reduce(function (p, s, k) {
+        return p.then(function () {
+          return loadSlide(k + 1);
+        });
+      }, Promise.resolve());
+    }
+    if (document.readyState === "complete") preloadRest();
+    else window.addEventListener("load", preloadRest);
+
+    setPaused(userPaused);
+  }
+
+  /* ---------------- Bar info gelombang (bisa ditutup) ---------------- */
+  var infoBar = document.getElementById("info-gelombang");
+  if (infoBar) {
+    try {
+      if (sessionStorage.getItem("otc-info-gelombang") === "closed") infoBar.hidden = true;
+    } catch (e) {}
+    var infoClose = document.getElementById("info-gelombang-close");
+    if (infoClose) {
+      infoClose.addEventListener("click", function () {
+        infoBar.hidden = true;
+        try {
+          sessionStorage.setItem("otc-info-gelombang", "closed");
+        } catch (e) {}
+      });
+    }
+  }
+
+  /* ---------------- Stepper cara daftar ---------------- */
+  var stepper = document.getElementById("stepper");
+  if (stepper) {
+    var total = parseInt(stepper.dataset.total, 10) || 1;
+    var tabs = Array.prototype.slice.call(stepper.querySelectorAll(".stp-tab"));
+    var dotGroups = Array.prototype.slice.call(stepper.querySelectorAll(".stp-dots"));
+    var notes = Array.prototype.slice.call(stepper.querySelectorAll(".stp-note"));
+    var dots = Array.prototype.slice.call(stepper.querySelectorAll(".stp-dot"));
+    var lines = Array.prototype.slice.call(stepper.querySelectorAll(".stp-line"));
+    var imgs = Array.prototype.slice.call(stepper.querySelectorAll(".stp-img"));
+    var texts = Array.prototype.slice.call(stepper.querySelectorAll(".stp-text"));
+    var body = document.getElementById("stp-body");
+    var prevBtn = document.getElementById("stp-prev");
+    var nextBtn = document.getElementById("stp-next");
+    var applyBtn = document.getElementById("stp-apply");
+    var current = 1;
+
+    // sub-langkah (1..9) → langkah utama (1..4)
+    var mainOf = {};
+    texts.forEach(function (t) {
+      mainOf[t.dataset.step] = t.dataset.main;
+    });
+
+    function styleTab(tab, on) {
+      tab.setAttribute("aria-selected", on ? "true" : "false");
+      tab.style.background = on ? "var(--primary)" : "var(--surface)";
+      tab.style.borderColor = on ? "var(--primary)" : "var(--border)";
+      tab.style.color = on ? "#ffffff" : "var(--text-primary)";
+      var num = tab.querySelector(".stp-tab-num");
+      if (num) {
+        num.style.background = on ? "rgba(255,255,255,0.18)" : "var(--primary-tint)";
+        num.style.color = on ? "#ffffff" : "var(--primary-dark)";
+      }
+    }
+
+    function styleDot(dot, state) {
+      var num = dot.querySelector(".stp-dot-num");
+      var check = dot.querySelector(".stp-dot-check");
+      if (state === "active") {
+        dot.style.background = "var(--primary)";
+        dot.style.borderColor = "var(--primary)";
+        dot.style.color = "#ffffff";
+        dot.setAttribute("aria-current", "step");
+      } else if (state === "done") {
+        dot.style.background = "var(--primary-tint)";
+        dot.style.borderColor = "var(--border-teal)";
+        dot.style.color = "var(--primary)";
+        dot.removeAttribute("aria-current");
+      } else {
+        dot.style.background = "var(--surface)";
+        dot.style.borderColor = "var(--border)";
+        dot.style.color = "var(--text-secondary)";
+        dot.removeAttribute("aria-current");
+      }
+      if (num) num.hidden = state === "done";
+      if (check) check.hidden = state !== "done";
+    }
+
+    function go(n, opts) {
+      n = Math.max(1, Math.min(total, n));
+      current = n;
+      var main = mainOf[String(n)];
+
+      tabs.forEach(function (t) {
+        styleTab(t, t.dataset.main === main);
+      });
+      if (body) body.setAttribute("aria-labelledby", "stp-tab-" + main);
+      dotGroups.forEach(function (grp) {
+        grp.hidden = grp.dataset.main !== main;
+      });
+      notes.forEach(function (el) {
+        el.hidden = el.dataset.main !== main;
+      });
+      dots.forEach(function (d) {
+        var s = parseInt(d.dataset.step, 10);
+        styleDot(d, s === n ? "active" : s < n ? "done" : "todo");
+      });
+      lines.forEach(function (l) {
+        l.style.background = parseInt(l.dataset.step, 10) < n ? "var(--primary)" : "var(--border)";
+      });
+      imgs.forEach(function (el) {
+        el.hidden = parseInt(el.dataset.step, 10) !== n;
+      });
+      texts.forEach(function (el) {
+        el.hidden = parseInt(el.dataset.step, 10) !== n;
+      });
+
+      if (prevBtn) prevBtn.disabled = n === 1;
+      var isLast = n === total;
+      var nextHadFocus = document.activeElement === nextBtn;
+      if (nextBtn) nextBtn.hidden = isLast;
+      if (applyBtn) {
+        applyBtn.hidden = !isLast;
+        if (isLast && nextHadFocus) applyBtn.focus();
+      }
+
+      if (!(opts && opts.skipHash) && window.history && history.replaceState) {
+        history.replaceState(null, "", "#cara-daftar-" + n);
+      }
+    }
+
+    tabs.forEach(function (t) {
+      t.addEventListener("click", function () {
+        go(parseInt(t.dataset.first, 10));
+      });
+    });
+    dots.forEach(function (d) {
+      d.addEventListener("click", function () {
+        go(parseInt(d.dataset.step, 10));
+      });
+    });
+    if (prevBtn) {
+      prevBtn.addEventListener("click", function () {
+        go(current - 1);
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", function () {
+        go(current + 1);
+      });
+    }
+
+    var m = /^#cara-daftar-(\d+)$/.exec(window.location.hash);
+    if (m) {
+      go(parseInt(m[1], 10), { skipHash: true });
+      var section = document.getElementById("cara-daftar");
+      if (section) {
+        setTimeout(function () {
+          section.scrollIntoView();
+        }, 0);
+      }
+    } else {
+      go(1, { skipHash: true });
+    }
+
+    /* ---------------- Galeri screenshot per langkah ---------------- */
+    function onSwipe(el, left, right) {
+      var x0 = null;
+      el.addEventListener("touchstart", function (e) {
+        x0 = e.touches[0].clientX;
+      }, { passive: true });
+      el.addEventListener("touchend", function (e) {
+        if (x0 === null) return;
+        var dx = e.changedTouches[0].clientX - x0;
+        x0 = null;
+        if (Math.abs(dx) < 40) return;
+        if (dx < 0) left();
+        else right();
+      }, { passive: true });
+    }
+
+    var galleries = Array.prototype.slice.call(stepper.querySelectorAll(".stp-gallery")).map(function (root) {
+      var g = {
+        root: root,
+        count: parseInt(root.dataset.count, 10) || 0,
+        index: 0,
+        track: root.querySelector(".stp-track"),
+        slides: Array.prototype.slice.call(root.querySelectorAll(".stp-zoom")),
+        caps: Array.prototype.slice.call(root.querySelectorAll(".stp-cap")),
+        thumbs: Array.prototype.slice.call(root.querySelectorAll(".stp-thumb")),
+        counter: root.querySelector(".stp-counter"),
+        prev: root.querySelector(".stp-slide-prev"),
+        next: root.querySelector(".stp-slide-next"),
+      };
+      g.set = function (i) {
+        if (!g.count) return;
+        g.index = Math.max(0, Math.min(g.count - 1, i));
+        if (g.track) g.track.style.transform = "translateX(-" + g.index * 100 + "%)";
+        g.slides.forEach(function (s, k) {
+          var on = k === g.index;
+          s.tabIndex = on ? 0 : -1;
+          if (on) s.removeAttribute("aria-hidden");
+          else s.setAttribute("aria-hidden", "true");
+        });
+        g.caps.forEach(function (c, k) {
+          c.hidden = k !== g.index;
+        });
+        g.thumbs.forEach(function (t, k) {
+          var on = k === g.index;
+          t.style.borderColor = on ? "var(--primary)" : "var(--border)";
+          if (on) t.setAttribute("aria-current", "true");
+          else t.removeAttribute("aria-current");
+        });
+        if (g.counter) g.counter.textContent = g.index + 1 + " / " + g.count;
+        if (g.prev) g.prev.disabled = g.index === 0;
+        if (g.next) g.next.disabled = g.index === g.count - 1;
+      };
+      if (g.prev) g.prev.addEventListener("click", function () { g.set(g.index - 1); });
+      if (g.next) g.next.addEventListener("click", function () { g.set(g.index + 1); });
+      g.thumbs.forEach(function (t) {
+        t.addEventListener("click", function () { g.set(parseInt(t.dataset.index, 10)); });
+      });
+      if (g.track && g.count > 1) {
+        onSwipe(g.track, function () { g.set(g.index + 1); }, function () { g.set(g.index - 1); });
+      }
+      g.slides.forEach(function (s) {
+        s.addEventListener("click", function () {
+          openGallery(g, parseInt(s.dataset.index, 10));
+        });
+      });
+      return g;
+    });
+
+    /* Lightbox galeri — elemen #lightbox & mekanisme tutup ada di common.js */
+    var lightbox = document.getElementById("lightbox");
+    var lbContent = document.getElementById("lightbox-content");
+    var lbGallery = null;
+    var lbIndex = 0;
+
+    function lbRender() {
+      var g = lbGallery;
+      var slide = g.slides[lbIndex];
+      var img = slide.querySelector("img");
+      var capEl = g.caps[lbIndex] ? g.caps[lbIndex].querySelector(".stp-cap-text") : null;
+      var many = g.count > 1;
+      var navBtn = 'class="absolute top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-white transition hover:bg-white/25 disabled:opacity-30" style="background: rgba(255,255,255,0.14)"';
+      lbContent.innerHTML =
+        '<figure class="relative">' +
+        '<img class="max-h-[78vh] w-full rounded-2xl object-contain" style="background: var(--surface)" />' +
+        '<figcaption class="mt-3 flex items-start justify-between gap-4 text-sm leading-6 text-white/85">' +
+        '<span class="lb-cap"></span>' +
+        (many ? '<span class="shrink-0 font-mono text-xs text-white/60">' + (lbIndex + 1) + " / " + g.count + "</span>" : "") +
+        "</figcaption>" +
+        (many
+          ? '<button type="button" data-lb="prev" aria-label="Gambar sebelumnya" ' + navBtn.replace('class="', 'class="left-2 sm:-left-14 ') + (lbIndex === 0 ? " disabled" : "") + '><iconify-icon icon="solar:alt-arrow-left-linear" width="22" height="22"></iconify-icon></button>' +
+            '<button type="button" data-lb="next" aria-label="Gambar berikutnya" ' + navBtn.replace('class="', 'class="right-2 sm:-right-14 ') + (lbIndex === g.count - 1 ? " disabled" : "") + '><iconify-icon icon="solar:alt-arrow-right-linear" width="22" height="22"></iconify-icon></button>'
+          : "") +
+        "</figure>";
+      var big = lbContent.querySelector("img");
+      big.src = img.currentSrc || img.src;
+      big.alt = img.alt;
+      lbContent.querySelector(".lb-cap").textContent = capEl ? capEl.textContent : img.alt;
+      if (many) onSwipe(big, function () { lbGo(lbIndex + 1); }, function () { lbGo(lbIndex - 1); });
+    }
+
+    function lbGo(i) {
+      if (!lbGallery) return;
+      var n = Math.max(0, Math.min(lbGallery.count - 1, i));
+      if (n === lbIndex) return;
+      var dir = n < lbIndex ? "prev" : "next";
+      lbIndex = n;
+      lbGallery.set(n);
+      lbRender();
+      var focusBtn = lbContent.querySelector('[data-lb="' + dir + '"]:not([disabled])') || lbContent.querySelector("[data-lb]:not([disabled])");
+      if (focusBtn) focusBtn.focus();
+    }
+
+    function openGallery(g, i) {
+      if (!lightbox || !lbContent) return;
+      lbGallery = g;
+      lbIndex = i;
+      lbContent.classList.add("lightbox-body--wide");
+      lbRender();
+      lightbox.classList.add("open");
+      document.body.style.overflow = "hidden";
+      var closeBtn = document.getElementById("lightbox-close");
+      if (closeBtn) closeBtn.focus();
+    }
+
+    if (lightbox && lbContent) {
+      lbContent.addEventListener("click", function (e) {
+        var b = e.target.closest ? e.target.closest("[data-lb]") : null;
+        if (!b) return;
+        lbGo(lbIndex + (b.dataset.lb === "next" ? 1 : -1));
+      });
+      document.addEventListener("keydown", function (e) {
+        if (!lbGallery || !lightbox.classList.contains("open")) return;
+        if (e.key === "ArrowRight") lbGo(lbIndex + 1);
+        if (e.key === "ArrowLeft") lbGo(lbIndex - 1);
+      });
+      new MutationObserver(function () {
+        if (!lightbox.classList.contains("open") && lbGallery) {
+          lbContent.classList.remove("lightbox-body--wide");
+          var slide = lbGallery.slides[lbGallery.index];
+          lbGallery = null;
+          if (slide) slide.focus({ preventScroll: true });
+        }
+      }).observe(lightbox, { attributes: true, attributeFilter: ["class"] });
+    }
+
+    galleries.forEach(function (g) {
+      g.set(0);
+    });
+  }
+
+  /* ---------------- Pengumuman: lihat lainnya ---------------- */
+  var moreBtn = document.getElementById("peng-more");
+  if (moreBtn) {
+    var extras = Array.prototype.slice.call(document.querySelectorAll(".peng-extra"));
+    var moreLabel = moreBtn.querySelector(".js-peng-more");
+    var lessLabel = moreBtn.querySelector(".js-peng-less");
+    var moreIcon = moreBtn.querySelector(".js-peng-icon");
+    moreBtn.addEventListener("click", function () {
+      var expand = moreBtn.getAttribute("aria-expanded") !== "true";
+      extras.forEach(function (el) {
+        el.hidden = !expand;
+      });
+      moreBtn.setAttribute("aria-expanded", expand ? "true" : "false");
+      if (moreLabel) moreLabel.hidden = expand;
+      if (lessLabel) lessLabel.hidden = !expand;
+      if (moreIcon) moreIcon.style.transform = expand ? "rotate(180deg)" : "";
+    });
+  }
+
+  /* ---------------- Pengumuman: pop-up detail ---------------- */
+  var pengModal = document.getElementById("peng-modal");
+  if (pengModal) {
+    var pengCard = pengModal.querySelector(".peng-modal-card");
+    var pengBody = pengModal.querySelector(".peng-modal-body");
+    var pengClose = document.getElementById("peng-close");
+    var details = Array.prototype.slice.call(pengModal.querySelectorAll(".peng-detail"));
+    var pengLastFocus = null;
+
+    function openPeng(i) {
+      details.forEach(function (d) {
+        d.hidden = d.dataset.peng !== String(i);
+      });
+      pengCard.setAttribute("aria-labelledby", "peng-title-" + i);
+      pengLastFocus = document.activeElement;
+      pengModal.classList.add("open");
+      pengModal.setAttribute("aria-hidden", "false");
+      document.body.style.overflow = "hidden";
+      pengBody.scrollTop = 0;
+      if (pengClose) pengClose.focus();
+    }
+
+    function closePeng() {
+      if (!pengModal.classList.contains("open")) return;
+      pengModal.classList.remove("open");
+      pengModal.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      if (pengLastFocus && pengLastFocus.focus) pengLastFocus.focus();
+    }
+
+    Array.prototype.slice.call(document.querySelectorAll("[data-peng-open]")).forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        openPeng(btn.dataset.pengOpen);
+      });
+    });
+    Array.prototype.slice.call(pengModal.querySelectorAll("[data-peng-close]")).forEach(function (b) {
+      b.addEventListener("click", closePeng);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (!pengModal.classList.contains("open")) return;
+      if (e.key === "Escape") closePeng();
+      if (e.key === "Tab") {
+        var f = Array.prototype.slice
+          .call(pengCard.querySelectorAll("a[href], button:not([disabled])"))
+          .filter(function (el) {
+            return el.offsetParent !== null;
+          });
+        if (!f.length) return;
+        var first = f[0];
+        var last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    });
+  }
+
+  /* ---------------- Bar bawah mobile ----------------
+     Baru muncul setelah hero terlewati (hero sudah punya tombol Daftar Sekarang),
+     dan disembunyikan lagi saat section CTA penutup / kontak terlihat. */
+  var mobileBar = document.getElementById("mobile-bar");
+  var heroSection = document.querySelector(".lp-hero");
+  var kontak = document.getElementById("kontak");
+  if (mobileBar && "IntersectionObserver" in window) {
+    var barTargets = [heroSection, kontak].filter(Boolean);
+    var barVisible = {};
+    var setBar = function (hide) {
+      mobileBar.style.transform = hide ? "translateY(110%)" : "";
+      mobileBar.setAttribute("aria-hidden", hide ? "true" : "false");
+      Array.prototype.slice.call(mobileBar.querySelectorAll("a, button")).forEach(function (el) {
+        el.tabIndex = hide ? -1 : 0;
+      });
+    };
+    setBar(true);
+    // Referensi disimpan di elemen agar observer tidak ikut dibersihkan garbage collector
+    mobileBar.barObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        barVisible[e.target === heroSection ? "hero" : "kontak"] = e.isIntersecting;
+      });
+      setBar(!!(barVisible.hero || barVisible.kontak));
+    }, { threshold: 0.15 });
+    barTargets.forEach(function (t) {
+      mobileBar.barObserver.observe(t);
+    });
+  }
+
+  /* ---------------- Panel kontak WhatsApp ---------------- */
+  var waPanel = document.getElementById("wa-panel");
+  if (waPanel) {
+    var waSheet = waPanel.querySelector(".wa-sheet");
+    var waToggles = Array.prototype.slice.call(document.querySelectorAll(".wa-toggle"));
+    var waOpener = null;
+
+    function waSetExpanded(on) {
+      waToggles.forEach(function (b) {
+        b.setAttribute("aria-expanded", on ? "true" : "false");
+      });
+    }
+
+    function waOpen(btn) {
+      waOpener = btn;
+      waPanel.hidden = false;
+      waSetExpanded(true);
+      var first = waPanel.querySelector(".wa-contact");
+      if (first) first.focus();
+    }
+
+    function waClose() {
+      if (waPanel.hidden) return;
+      waPanel.hidden = true;
+      waSetExpanded(false);
+      if (waOpener && waOpener.offsetParent !== null) waOpener.focus();
+    }
+
+    waToggles.forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (waPanel.hidden) waOpen(btn);
+        else waClose();
+      });
+    });
+    Array.prototype.slice.call(waPanel.querySelectorAll("[data-wa-close]")).forEach(function (el) {
+      el.addEventListener("click", waClose);
+    });
+    document.addEventListener("click", function (e) {
+      if (!waPanel.hidden && waSheet && !waSheet.contains(e.target)) waClose();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") waClose();
+    });
+
+    var waHelp = document.getElementById("wa-help");
+    var waHelpHide = document.getElementById("wa-help-hide");
+    if (waHelp) {
+      try {
+        if (sessionStorage.getItem("otc-wa-help") === "hidden") waHelp.hidden = true;
+      } catch (e) {}
+    }
+    if (waHelp && waHelpHide) {
+      waHelpHide.addEventListener("click", function () {
+        waHelp.hidden = true;
+        try {
+          sessionStorage.setItem("otc-wa-help", "hidden");
+        } catch (e) {}
+      });
+    }
+  }
+})();
